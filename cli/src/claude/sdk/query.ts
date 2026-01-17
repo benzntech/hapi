@@ -28,6 +28,7 @@ import { killProcessByChildProcess } from '@/utils/process'
 import type { Writable } from 'node:stream'
 import { logger } from '@/ui/logger'
 import { appendMcpConfigArg } from '../utils/mcpConfig'
+import { resolveClaudeSpawn } from '@/claude/utils/resolveClaudeSpawn'
 
 /**
  * Query class manages Claude Code process interaction
@@ -330,8 +331,9 @@ export function query(config: {
         throw new ReferenceError(`Claude Code executable not found at ${pathToClaudeCodeExecutable}. Is options.pathToClaudeCodeExecutable set?`)
     }
 
-    const spawnCommand = pathToClaudeCodeExecutable
-    const spawnArgs = args
+    const spawnPlan = resolveClaudeSpawn(pathToClaudeCodeExecutable, args)
+    const spawnCommand = spawnPlan.command
+    const spawnArgs = spawnPlan.args
 
     cleanupMcpConfig = appendMcpConfigArg(spawnArgs, mcpServers)
 
@@ -345,7 +347,7 @@ export function query(config: {
         signal: config.options?.abort,
         env: spawnEnv,
         // Use shell on Windows for command resolution
-        shell: process.platform === 'win32'
+        shell: spawnPlan.shell
     }) as ChildProcessWithoutNullStreams
 
     // Handle stdin

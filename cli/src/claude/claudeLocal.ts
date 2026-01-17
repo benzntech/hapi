@@ -7,6 +7,7 @@ import { appendMcpConfigArg } from "./utils/mcpConfig";
 import { systemPrompt } from "./utils/systemPrompt";
 import { withBunRuntimeEnv } from "@/utils/bunRuntime";
 import { spawnWithAbort } from "@/utils/spawnWithAbort";
+import { resolveClaudeSpawn } from "./utils/resolveClaudeSpawn";
 
 export async function claudeLocal(opts: {
     abort: AbortSignal,
@@ -76,14 +77,15 @@ export async function claudeLocal(opts: {
         ...opts.claudeEnvVars
     }
 
-    logger.debug(`[ClaudeLocal] Spawning claude with args: ${JSON.stringify(args)}`);
+    const spawnPlan = resolveClaudeSpawn('claude', args);
+    logger.debug(`[ClaudeLocal] Spawning ${spawnPlan.command} with args: ${JSON.stringify(spawnPlan.args)}`);
 
     // Spawn the process
     try {
         process.stdin.pause();
         await spawnWithAbort({
-            command: 'claude',
-            args,
+            command: spawnPlan.command,
+            args: spawnPlan.args,
             cwd: opts.path,
             env: withBunRuntimeEnv(env, { allowBunBeBun: false }),
             signal: opts.abort,
@@ -92,7 +94,7 @@ export async function claudeLocal(opts: {
             installHint: 'Claude CLI',
             includeCause: true,
             logExit: true,
-            shell: process.platform === 'win32'
+            shell: spawnPlan.shell
         });
     } finally {
         cleanupMcpConfig?.();
